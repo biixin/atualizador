@@ -1,0 +1,96 @@
+# RAS Radar
+
+Painel em português para acompanhar os RAS do [GCMDC SCORA](https://gcmdc-scora.netlify.app/ras), com monitoramento no servidor e notificações push no celular mesmo com o painel fechado.
+
+## Rodar no computador
+
+Requisito: Node.js 22 ou superior (recomendado: 24).
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+Abra **http://localhost:5173**. No Windows, use `npm.cmd` se o PowerShell bloquear `npm.ps1`.
+
+Para servir o site compilado em **http://localhost:3001**:
+
+```powershell
+npm.cmd run build
+npm.cmd start
+```
+
+O servidor consulta a API mesmo sem nenhuma aba aberta. Fechar o terminal, desligar ou suspender o computador interrompe o monitoramento. Uma hospedagem que permaneça ligada elimina essa dependência do computador.
+
+## O que já está conectado
+
+- Consulta de leitura `POST /rest/v1/rpc/listar_ras_disponiveis`, no Supabase usado pelo SCORA. Em 23/09/2026, a consulta respondeu sem login com a chave **publicável**, já presente no JavaScript público do site de origem.
+- Informações reais: data, local, horário, total, ocupação, lugares restantes e prazo de candidatura.
+- Intervalos de 30 segundos, 1, 2, 5 e 10 minutos, pausa e verificação manual.
+- Comparação entre consultas; alertas para novo RAS aberto, reabertura ou aumento de vagas disponíveis. Opcionalmente, avisos de outras alterações.
+- Filtro por dias de folga: quem trabalha em dias pares acompanha os ímpares, e vice-versa. O filtro é local e **não altera a escala cadastrada no SCORA**.
+- Histórico das últimas 200 alterações, preservado junto às preferências e ao último resultado.
+- Push com fila de nova tentativa, remoção de assinaturas revogadas e descarte de avisos de vagas já encerradas.
+- Aplicativo instalável (PWA), compatível com navegadores que oferecem Web Push.
+
+A primeira consulta cria a referência para comparar as próximas; as vagas já existentes aparecem na tela, sem uma enxurrada de notificações. Uma vaga com lugares restantes **não está aberta se o prazo venceu**. Os horários do histórico indicam quando a mudança foi detectada, pois a API não fornece a hora exata da edição.
+
+É atualização **periódica**, não um canal instantâneo. A latência normal é até o intervalo escolhido, mais o tempo da rede e do push. Em falhas da API, preservamos a última resposta válida e aumentamos o intervalo progressivamente até 15 minutos. Mudanças que aconteçam e sejam revertidas entre duas consultas podem não ser vistas. Candidaturas são feitas exclusivamente no SCORA.
+
+## Receber avisos no celular com o site fechado
+
+1. Hospede este servidor com disco persistente e funcionamento contínuo, em um endereço **HTTPS**.
+2. Abra esse endereço no celular e entre com a senha do seu painel.
+3. No **iPhone/iPad com iOS 16.4+**, use Compartilhar → Adicionar à Tela de Início, e abra o site pelo ícone criado. No Android, abra em um navegador compatível e, se quiser, instale o app.
+4. No painel, escolha **Configurar alertas → Ativar notificações neste aparelho** e aceite a permissão do sistema.
+5. Use **Enviar aviso de teste** para confirmar a permissão e a inscrição do aparelho. Os avisos de futuras vagas serão enviados automaticamente, mesmo com o painel fechado.
+
+Os avisos reais são disparados pelo servidor, não por um timer na aba. O aparelho precisa de internet, permissão de notificações e suporte a Web Push. O serviço de push e o sistema do celular controlam a entrega final. A lista de serviços de push aceitos inclui Google, Mozilla, Apple e Windows; outros provedores exigem ajuste em `server/index.js`.
+
+**O localhost é apenas para desenvolvimento no computador.** O celular não consegue abrir o localhost de outro dispositivo. Um endereço HTTP da rede local também não atende ao requisito de contexto seguro para Push.
+
+Referências: [Push API (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Push_API), [Service Workers e HTTPS (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API), [Web Push no iPhone (Apple)](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).
+
+## Publicar com Docker e HTTPS
+
+Incluídos `Dockerfile`, `compose.yaml` e Caddy para HTTPS automático. Em um servidor Linux com Docker Compose, um domínio apontado para seu IP e portas 80/443 disponíveis:
+
+1. Copie o projeto para o servidor.
+2. Crie `.env` usando `.env.example` como referência e inclua:
+
+```dotenv
+DOMAIN=radar.seudominio.com
+MONITOR_TOKEN=uma-senha-longa-exclusiva-com-24-ou-mais-caracteres
+VAPID_SUBJECT=mailto:seu-email@exemplo.com
+```
+
+3. Suba o serviço:
+
+```sh
+docker compose up -d --build
+```
+
+4. Acesse `https://radar.seudominio.com` e informe `MONITOR_TOKEN` no formulário de acesso. É uma senha do painel, separada da conta SCORA.
+
+O volume `radar_data` preserva os dados e as chaves push. **Não apague esse volume em uma atualização.** Se as chaves push forem perdidas, os celulares precisam se inscrever novamente. Execute somente uma instância do monitor por diretório de dados.
+
+Também é possível usar qualquer serviço de hospedagem Node.js/Docker que ofereça processo contínuo, HTTPS e volume persistente. Configure `HOST=0.0.0.0`, `APP_ORIGIN=https://seu-endereco`, `MONITOR_TOKEN` (24+ caracteres), `DATA_DIR` no volume e `VAPID_SUBJECT` com seu e-mail. O servidor recusa exposição externa sem origem HTTPS e senha. Hospedagem exclusivamente estática e funções que adormecem não mantêm este monitor funcionando.
+
+## Dados e manutenção
+
+- `data/state.json`: preferências, última resposta, histórico, fila e assinaturas push.
+- `data/push-keys.json`: chaves VAPID geradas automaticamente e mantidas entre reinícios.
+- Esses arquivos não são publicados no site e estão no `.gitignore`. Faça backup do diretório `data` junto da configuração do servidor.
+- A integração usa somente a consulta de leitura do SCORA. Não pede matrícula, CPF ou senha de trabalho.
+- Se o SCORA mudar o contrato ou passar a exigir autenticação, o painel mostrará erro e a integração precisará ser atualizada. Nenhum mecanismo contorna autenticação.
+- `GET /api/health`: verificação de saúde do processo. `GET /api/status`: estado do monitor, protegido pela senha quando configurada.
+
+## Verificações
+
+```powershell
+npm.cmd test
+npm.cmd run build
+npm.cmd run test:ui
+```
+
+Os testes de domínio cobrem prazo vencido, fuso horário, escala, reabertura, ausência de duplicatas, erro da API, persistência, simultaneidade e recuperação de push. O teste visual usa Chrome instalado no Windows ou Chromium do Playwright e requer `npm run dev` em execução. O envio real ao celular depende da inscrição e da permissão do proprietário do aparelho; não pode ser validado apenas com simulações.

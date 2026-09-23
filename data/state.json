@@ -1,0 +1,201 @@
+{
+  "settings": {
+    "interval": 60,
+    "enabled": true,
+    "workdays": "all",
+    "notifyChanges": false
+  },
+  "snapshot": [
+    {
+      "id": "47",
+      "date": "2026-09-25",
+      "location": "POG FEST TURNO 1",
+      "start": "16:00:00",
+      "end": "00:00:00",
+      "notes": "VALOR R$270",
+      "total": 10,
+      "occupied": 10,
+      "remaining": 0,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "50",
+      "date": "2026-09-25",
+      "location": "COTEM",
+      "start": "17:00:00",
+      "end": "05:00:00",
+      "notes": "VALOR R$270",
+      "total": 4,
+      "occupied": 3,
+      "remaining": 1,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "49",
+      "date": "2026-09-25",
+      "location": "VTR FEST",
+      "start": "18:00:00",
+      "end": "06:00:00",
+      "notes": "VALOR R$270",
+      "total": 24,
+      "occupied": 24,
+      "remaining": 0,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "48",
+      "date": "2026-09-25",
+      "location": "POG FEST TURNO 2",
+      "start": "22:00:00",
+      "end": "06:00:00",
+      "notes": " VALOR R$270",
+      "total": 10,
+      "occupied": 8,
+      "remaining": 2,
+      "deadline": "2026-09-23T14:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "51",
+      "date": "2026-09-26",
+      "location": "POG FEST TURNO 1",
+      "start": "14:00:00",
+      "end": "22:00:00",
+      "notes": "VALOR R$270",
+      "total": 10,
+      "occupied": 9,
+      "remaining": 1,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "57",
+      "date": "2026-09-26",
+      "location": "COTEM",
+      "start": "15:00:00",
+      "end": "03:00:00",
+      "notes": "VALOR R$270",
+      "total": 4,
+      "occupied": 4,
+      "remaining": 0,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "53",
+      "date": "2026-09-26",
+      "location": "VTR FEST",
+      "start": "18:00:00",
+      "end": "06:00:00",
+      "notes": "VALOR R$270",
+      "total": 24,
+      "occupied": 16,
+      "remaining": 8,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "52",
+      "date": "2026-09-26",
+      "location": "POG FEST TRUNO 2",
+      "start": "21:00:00",
+      "end": "05:00:00",
+      "notes": "VALOR R$270",
+      "total": 10,
+      "occupied": 10,
+      "remaining": 0,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "54",
+      "date": "2026-09-27",
+      "location": "POG FEST TURNO 1",
+      "start": "14:00:00",
+      "end": "22:00:00",
+      "notes": "VALOR R$270",
+      "total": 10,
+      "occupied": 10,
+      "remaining": 0,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "58",
+      "date": "2026-09-27",
+      "location": "COTEM",
+      "start": "15:00:00",
+      "end": "03:00:00",
+      "notes": "VALOR R$270",
+      "total": 4,
+      "occupied": 1,
+      "remaining": 3,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "56",
+      "date": "2026-09-27",
+      "location": "VTR FEST",
+      "start": "18:00:00",
+      "end": "06:00:00",
+      "notes": "VALOR R$270",
+      "total": 24,
+      "occupied": 23,
+      "remaining": 1,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    },
+    {
+      "id": "55",
+      "date": "2026-09-27",
+      "location": "POG FEST TURNO 2",
+      "start": "21:00:00",
+      "end": "05:00:00",
+      "notes": "VALOR R$270",
+      "total": 10,
+      "occupied": 8,
+      "remaining": 2,
+      "deadline": "2026-09-23T15:00:00+00:00",
+      "status": "closed"
+    }
+  ],
+  "events": [
+    {
+      "id": "4fd8a064-5ca4-4365-bdfd-f99426fd22e6",
+      "kind": "updated",
+      "at": "2026-09-23T21:32:21.363Z",
+      "title": "RAS atualizado",
+      "detail": "POG FEST TURNO 2 · 25/09/2026 · 2 vaga(s) restante(s)",
+      "row": {
+        "id": "48",
+        "date": "2026-09-25",
+        "location": "POG FEST TURNO 2",
+        "start": "22:00:00",
+        "end": "06:00:00",
+        "notes": " VALOR R$270",
+        "total": 10,
+        "occupied": 8,
+        "remaining": 2,
+        "deadline": "2026-09-23T14:00:00+00:00",
+        "status": "closed"
+      }
+    },
+    {
+      "id": "bd4a6fbe-175c-45b8-b061-98dbe10550bb",
+      "kind": "connected",
+      "at": "2026-09-23T20:51:13.250Z",
+      "title": "Primeira consulta concluída",
+      "detail": "12 RAS encontrados. Acompanhando as próximas alterações."
+    }
+  ],
+  "subscriptions": [],
+  "outbox": [],
+  "lastCheck": "2026-09-23T21:58:29.667Z",
+  "lastChange": "2026-09-23T21:32:21.363Z",
+  "checks": 68,
+  "error": null
+}
