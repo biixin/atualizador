@@ -49,6 +49,8 @@ Para receber no celular, o servidor precisa lembrar o último estado das vagas, 
 | Variável | O que colocar |
 | --- | --- |
 | `MONITOR_TOKEN` | Uma senha exclusiva com pelo menos 24 caracteres. Será a senha para entrar neste painel. |
+| `ADMIN_USERNAME` | Login para a área de testes administrativos, por exemplo `admin`. |
+| `ADMIN_PASSWORD` | Outra senha exclusiva com pelo menos 12 caracteres, usada somente no login de admin. |
 | `CRON_SECRET` | Outra chave exclusiva, diferente da senha acima, com pelo menos 24 caracteres. |
 | `VAPID_SUBJECT` | `mailto:seu-email@exemplo.com` |
 
@@ -101,6 +103,16 @@ Mantenha `CRON_SECRET` configurada. A Vercel a envia no cabeçalho de autorizaç
 4. Envie um aviso de teste e confira se o painel também mostra o agendamento confirmado.
 
 O envio de teste confirma a inscrição do dispositivo; o indicador de agendamento confirma a execução automática. Ambos precisam funcionar para acompanhar vagas com o painel fechado.
+
+## 5. Enviar mensagens de teste pelo computador
+
+Depois de publicar o código atualizado e configurar `ADMIN_USERNAME` e `ADMIN_PASSWORD`, abra **Admin** no menu ou **https://atualizador-dusky.vercel.app/#admin**. Entre com essas credenciais, escolha os destinatários, escreva título e mensagem e clique em **Enviar notificação de teste**.
+
+O login de admin também libera o acesso ao painel. A senha comum `MONITOR_TOKEN` não permite entrar na administração. A sessão administrativa dura oito horas e pode ser encerrada em **Sair do admin**.
+
+Os celulares precisam ter ativado os avisos **nesse endereço da Vercel** e aparecer na lista de dispositivos. O computador não precisa ativar notificações. Se a lista estiver vazia, cadastre primeiro o celular e use **Atualizar dispositivos**. Os cadastros e resultados ficam no Redis; sem ele, o envio não está disponível.
+
+O envio manual funciona sem agendamento, inclusive com o painel do celular fechado. O resultado informa quais envios foram aceitos pelo serviço de push e quais falharam. Confira a chegada no aparelho. Aguarde 30 segundos entre os testes. O cron continua necessário para detectar novas vagas automaticamente com o site fechado.
 
 ## Testar localmente o adaptador da Vercel
 

@@ -57,6 +57,31 @@ Os avisos reais são disparados pelo servidor, não por um timer na aba. O apare
 
 Referências: [Push API (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Push_API), [Service Workers e HTTPS (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API), [Web Push no iPhone (Apple)](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).
 
+## Administração e testes de notificações
+
+No computador, abra **Admin** no menu ou acesse o endereço do site com `/#admin` no final. Também há um botão **Entrar como administrador** na tela de acesso do painel.
+
+Configure no servidor:
+
+```dotenv
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=sua-senha-exclusiva-com-pelo-menos-12-caracteres
+```
+
+No desenvolvimento, use o arquivo `.env` e reinicie `npm.cmd run dev` depois de alterá-lo. Na Vercel, defina as duas variáveis em **Settings → Environment Variables → Production** e faça um novo deployment com o código atualizado. Não envie o arquivo `.env` ao repositório ou à hospedagem.
+
+1. Abra o site publicado nos celulares e ative as notificações em cada aparelho.
+2. Entre na área **Admin** pelo computador com `ADMIN_USERNAME` e `ADMIN_PASSWORD`.
+3. Escolha todos os dispositivos, somente celulares/tablets ou um aparelho específico.
+4. Preencha título e mensagem e clique em **Enviar notificação de teste**.
+5. Confira o resultado por aparelho e a notificação recebida no celular. Há um intervalo de 30 segundos entre testes.
+
+O PC não precisa estar inscrito para receber notificações. Os aparelhos já cadastrados aparecem na lista; cadastros antigos podem aparecer como “Dispositivo” sem identificação do tipo. Reative os alertas nesses aparelhos para atualizar a identificação.
+
+A senha de admin é independente de `MONITOR_TOKEN` e da conta SCORA. O acesso comum ao painel não autoriza envios administrativos. O login de admin também abre o painel e expira em oito horas; use **Sair do admin** ao terminar. Trocar a senha no servidor invalida as sessões antigas.
+
+Na Vercel, o envio requer Redis conectado e a proteção do painel configurada conforme o [guia de hospedagem](./VERCEL.md). **O teste manual não depende do cron.** O resultado “aceito” confirma que o serviço de push aceitou a mensagem; a exibição final deve ser conferida no celular. Os últimos 20 testes ficam registrados, e os cinco mais recentes aparecem na tela.
+
 ## Publicar com Docker e HTTPS
 
 Incluídos `Dockerfile`, `compose.yaml` e Caddy para HTTPS automático. Em um servidor Linux com Docker Compose, um domínio apontado para seu IP e portas 80/443 disponíveis:
@@ -97,6 +122,7 @@ Também é possível usar qualquer serviço de hospedagem Node.js/Docker que ofe
 npm.cmd test
 npm.cmd run build
 npm.cmd run test:ui
+npm.cmd run test:ui:admin
 ```
 
-Os testes de domínio cobrem prazo vencido, fuso horário, escala, reabertura, ausência de duplicatas, erro da API, persistência, simultaneidade e recuperação de push. O teste visual usa Chrome instalado no Windows ou Chromium do Playwright e requer `npm run dev` em execução. O envio real ao celular depende da inscrição e da permissão do proprietário do aparelho; não pode ser validado apenas com simulações.
+Os testes de domínio cobrem prazo vencido, fuso horário, escala, reabertura, ausência de duplicatas, erro da API, persistência, simultaneidade e recuperação de push. Os testes de admin verificam autenticação, isolamento do acesso comum, destinatários, resultados parciais e intervalo entre envios. Os testes visuais usam Chrome instalado no Windows ou Chromium do Playwright. `test:ui` requer `npm run dev` em execução; `test:ui:admin` inicia um servidor isolado com o site compilado, dados fictícios e push simulado. O envio real ao celular depende da inscrição e da permissão do proprietário do aparelho; não pode ser validado apenas com simulações.

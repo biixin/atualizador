@@ -8,12 +8,15 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { Store } from './store.js';
 import { Monitor } from './monitor.js';
 import { validateSettings } from './domain.js';
+import { adminAuth, createAdminRouter, deviceMetadata } from './admin.js';
+import { pushSender } from './push.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 3001);
 const token = process.env.MONITOR_TOKEN || '';
 const origin = process.env.APP_ORIGIN || '';
+const admin = adminAuth(process.env, { secure: origin.startsWith('https://') });
 if (!['127.0.0.1', 'localhost', '::1'].includes(host) && (token.length < 24 || !origin.startsWith('https://'))) {
   throw new Error('Para acesso externo, configure MONITOR_TOKEN com pelo menos 24 caracteres e APP_ORIGIN com seu endereço HTTPS.');
 }
@@ -39,13 +42,18 @@ app.use((req, res, next) => {
 });
 const equal = (a, b) => timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
 function authenticated(req) {
+  if (admin.authenticated(req)) return true;
   if (!token) return true;
   const cookie = req.headers.cookie?.split(';').map(x => x.trim()).find(x => x.startsWith('ras_session='))?.slice(12) || '';
   const [expires, signature] = cookie.split('.');
   return Number(expires) > Date.now() && !!signature && equal(signature, createHmac('sha256', token).update(expires).digest('hex'));
 }
 app.get('/api/health', (req, res) => res.json({ ok: true }));
-app.get('/api/auth', (req, res) => res.json({ authenticated: authenticated(req), required: !!token }));
+app.get('/api/auth', (req, res) => res.json({ authenticated: authenticated(req), required: !!token, adminAuthenticated: admin.authenticated(req), adminConfigured: admin.configured }));
+app.use('/api/admin', createAdminRouter({
+  auth: admin, readStore: () => store, mutateStore: callback => callback(store),
+  sendForStore: () => pushSender(keys, process.env.VAPID_SUBJECT),
+}));
 const loginAttempts = new Map();
 app.post('/api/login', (req, res) => {
   const ip = req.socket.remoteAddress;
@@ -89,6 +97,7 @@ app.post('/api/push/subscribe', (req, res) => {
   if (!validSubscription(req.body)) return res.status(400).json({ error: 'Assinatura de notificações inválida ou serviço de push não suportado.' });
   const subscription = { endpoint: req.body.endpoint, keys: { auth: req.body.keys.auth, p256dh: req.body.keys.p256dh } };
   const previous = store.state.subscriptions.find(x => x.endpoint === subscription.endpoint);
+  Object.assign(subscription, deviceMetadata(req.body, previous));
   if (!previous && store.state.subscriptions.length >= 20) return res.status(400).json({ error: 'Limite de 20 dispositivos atingido.' });
   store.state.subscriptions = store.state.subscriptions.filter(x => x.endpoint !== subscription.endpoint);
   store.state.subscriptions.push(subscription); store.save(); res.json({ ok: true });

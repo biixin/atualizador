@@ -6,6 +6,8 @@ services:
       HOST: 0.0.0.0
       APP_ORIGIN: https://${DOMAIN:?Defina DOMAIN no .env}
       MONITOR_TOKEN: ${MONITOR_TOKEN:?Defina MONITOR_TOKEN no .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
     volumes:
       - radar_data:/app/data

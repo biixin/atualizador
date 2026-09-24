@@ -48,11 +48,11 @@ export class RedisRepository {
       return { busy: false, result: await callback(store) };
     } finally { await this.command('EVAL', UNLOCK_SCRIPT, 1, lock, owner); }
   }
-  async loginAllowed() {
-    const key = `${this.prefix}:login-attempts`;
+  async loginAllowed(scope = 'panel') {
+    const key = `${this.prefix}:${scope === 'admin' ? 'admin-' : ''}login-attempts`;
     // INCR and TTL are atomic; expired functions cannot leave a permanent lockout.
     const count = await this.command('EVAL', "local count = redis.call('INCR', KEYS[1]); if count == 1 then redis.call('EXPIRE', KEYS[1], 900) end; return count", 1, key);
     return count <= 10;
   }
-  async resetLoginAttempts() { await this.command('DEL', `${this.prefix}:login-attempts`); }
+  async resetLoginAttempts(scope = 'panel') { await this.command('DEL', `${this.prefix}:${scope === 'admin' ? 'admin-' : ''}login-attempts`); }
 }

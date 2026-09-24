@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import HostingSetup from './HostingSetup.jsx';
+import AdminNotifications from './AdminNotifications.jsx';
+import { currentDevice } from './device.js';
 import { Activity, ArrowDownUp, ArrowRight, ArrowUpRight, Bell, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, ExternalLink, History, LayoutDashboard, LoaderCircle, MapPin, Pause, Play, Radar, RefreshCw, Search, Settings2, ShieldCheck, Smartphone, Sparkles, Users, WifiOff, X } from 'lucide-react';
 
 const SOURCE = 'https://gcmdc-scora.netlify.app/ras';
@@ -42,7 +44,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [data, setData] = useState(null);
   const [offline, setOffline] = useState('');
-  const [page, setPage] = useState('dashboard');
+  const [page, setPage] = useState(() => window.location.hash === '#admin' ? 'admin' : 'dashboard');
   const [tab, setTab] = useState('all');
   const [date, setDate] = useState('all');
   const [search, setSearch] = useState('');
@@ -91,6 +93,11 @@ export default function App() {
     try { await api('/login', { method: 'POST', body: JSON.stringify({ password }) }); setPassword(''); setAuth({ authenticated: true, required: true }); }
     catch (error) { notify(error.message, true); } finally { setBusy(false); }
   }
+  async function refreshAuth() {
+    const result = await api('/auth');
+    setAuth(result);
+    if (!result.authenticated) { setData(null); setOffline(''); }
+  }
   async function check() {
     setBusy(true);
     try { const result = await api('/check', { method: 'POST', body: '{}' }); receive(result); notify(result.error || (result.checking ? 'Verificação iniciada. O painel será atualizado ao receber a resposta.' : 'Consulta concluída. As vagas estão atualizadas.'), !!result.error); }
@@ -114,7 +121,7 @@ export default function App() {
       const { publicKey } = await api('/push/key');
       const key = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/')), char => char.charCodeAt(0));
       const sub = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-      await api('/push/subscribe', { method: 'POST', body: JSON.stringify(sub.toJSON()) });
+      await api('/push/subscribe', { method: 'POST', body: JSON.stringify({ ...sub.toJSON(), ...currentDevice() }) });
       setPushEnabled(true); notify('Dispositivo conectado! Você já pode testar o aviso.');
       receive(await api('/status'));
     } catch (error) { notify(error.message, true); } finally { setPushBusy(false); }
@@ -149,27 +156,29 @@ export default function App() {
   const problem = offline || data?.error;
   const healthy = data?.initialized && !problem && !stale;
   const statusText = problem ? 'Conexão interrompida' : !data?.initialized ? 'Conectando ao SCORA' : !config.enabled ? 'Monitoramento pausado' : stale ? 'Aguardando atualização' : vercel && !capabilities.background ? 'Consultando com o painel aberto' : 'Monitoramento ativo';
-  const pageTitles = { dashboard: 'Visão geral', history: 'Histórico de atualizações', settings: 'Configurações' };
+  const pageTitles = { dashboard: 'Visão geral', history: 'Histórico de atualizações', settings: 'Configurações', admin: 'Notificações de teste' };
+  const pageDescription = page === 'dashboard' ? 'Acompanhe as vagas de RAS e saiba quando a próxima oportunidade aparecer.' : page === 'history' ? 'Cada mudança detectada, com data e hora. Tudo em um só lugar.' : page === 'admin' ? 'Envie uma mensagem pelo computador e confirme os avisos nos seus celulares.' : 'Deixe o radar acompanhar o que faz sentido para a sua escala.';
   const monitorDescription = !config.enabled ? 'Suas preferências estão salvas. Retome quando quiser.' : vercel
     ? capabilities.background ? `Agendamento confirmado. Intervalo mínimo efetivo: ${Math.max(config.interval, capabilities.schedulerInterval)} segundos.` : 'As consultas continuam enquanto este painel estiver aberto. Configure o agendamento para acompanhar com ele fechado.'
     : `Conferindo o SCORA a cada ${INTERVALS.find(item => item.value === config.interval)?.label}. A gente acompanha para você.`;
 
   return <>
     {modal === 'hosting' && <Modal title="Configurar a Vercel" onClose={() => setModal(null)}><HostingSetup capabilities={capabilities} /></Modal>}
-    {auth && !auth.authenticated ? <main className="login-screen"><div className="login-card"><Brand /><h1>Seu radar, só seu.</h1><p>Digite a senha de acesso definida para este painel.</p><form onSubmit={login}><label>Senha do painel<input autoFocus type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required /></label><button className="button primary" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <ShieldCheck size={17} />} Entrar no painel</button></form><small>Esta é a senha do RAS Radar, não a sua senha do SCORA.</small></div></main> : <div className="app-shell">
+    {auth && !auth.authenticated && page !== 'admin' ? <main className="login-screen"><div className="login-card"><Brand /><h1>Seu radar, só seu.</h1><p>Digite a senha de acesso definida para este painel.</p><form onSubmit={login}><label>Senha do painel<input autoFocus type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required /></label><button className="button primary" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <ShieldCheck size={17} />} Entrar no painel</button></form><button type="button" className="text-button" onClick={() => setPage('admin')}>Entrar como administrador</button><small>Esta é a senha do RAS Radar, não a sua senha do SCORA.</small></div></main> : <div className="app-shell">
       <aside className="sidebar">
         <Brand />
         <div className="workspace"><span className="workspace-avatar"><ShieldCheck size={20} /></span><span><strong>Meu monitor de RAS</strong><small>GCM · Duque de Caxias</small></span><span className="workspace-dot" /></div>
         <p className="nav-label">ACOMPANHAMENTO</p>
-        <nav aria-label="Menu principal">{[{ id: 'dashboard', label: 'Visão geral', Icon: LayoutDashboard }, { id: 'history', label: 'Histórico', Icon: History }, { id: 'settings', label: 'Configurações', Icon: Settings2 }].map(({ id, label, Icon }) => <button key={id} className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span>{id === 'dashboard' && <span className="nav-dot" />}</button>)}</nav>
+        <nav aria-label="Menu principal">{[{ id: 'dashboard', label: 'Visão geral', Icon: LayoutDashboard }, { id: 'history', label: 'Histórico', Icon: History }, { id: 'admin', label: 'Admin', Icon: ShieldCheck }, { id: 'settings', label: 'Configurações', Icon: Settings2 }].map(({ id, label, Icon }) => <button key={id} className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}><Icon size={19} /><span>{label}</span>{id === 'dashboard' && <span className="nav-dot" />}</button>)}</nav>
         <div className="sidebar-bottom"><div className="mobile-card"><span className="mobile-icon"><Smartphone size={23} /><span className="tiny-dot" /></span><strong>Seu radar vai com você</strong><p>Receba um aviso no celular quando uma vaga abrir.</p><button onClick={() => setModal('push')}>Configurar alertas <ArrowUpRight size={16} /></button></div><button className="help-link" onClick={() => setModal('help')}><CircleHelp size={18} /> Como funciona <ArrowUpRight size={15} /></button><div className="sidebar-footer"><span className="mini-logo"><Radar size={15} /></span><span>Feito para a sua próxima escala.</span></div></div>
       </aside>
       <div className="main-wrap">
         <header className="topbar"><div className="breadcrumb"><span>Meu espaço</span><ChevronRight size={14} /><strong>{pageTitles[page]}</strong></div><div className="topbar-right"><span className="today"><CalendarDays size={15} />{new Date(now).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}</span><span className="topbar-divider" /><button className="notification-button" aria-label="Configurar notificações" onClick={() => setModal('push')}><Bell size={20} />{pushEnabled && <i />}</button><span className="avatar">EU</span></div></header>
         <main className="content">
-          <div className="page-heading"><div><div className="eyebrow"><span /> SEU TEMPO IMPORTA</div><h1>{page === 'dashboard' ? 'Suas oportunidades, no radar.' : pageTitles[page]}</h1><p>{page === 'dashboard' ? 'Acompanhe as vagas de RAS e saiba quando a próxima oportunidade aparecer.' : page === 'history' ? 'Cada mudança detectada, com data e hora. Tudo em um só lugar.' : 'Deixe o radar acompanhar o que faz sentido para a sua escala.'}</p></div><a className="button secondary source-button" href={SOURCE} target="_blank" rel="noreferrer">Abrir SCORA <ArrowUpRight size={16} /></a></div>
+          <div className="page-heading"><div><div className="eyebrow"><span /> SEU TEMPO IMPORTA</div><h1>{page === 'dashboard' ? 'Suas oportunidades, no radar.' : pageTitles[page]}</h1><p>{pageDescription}</p></div><a className="button secondary source-button" href={SOURCE} target="_blank" rel="noreferrer">Abrir SCORA <ArrowUpRight size={16} /></a></div>
           {problem && <div className="error-banner" role="alert"><WifiOff size={19} /><div><strong>Não foi possível atualizar o radar</strong><p>{problem}</p></div><button onClick={auth ? check : () => window.location.reload()} disabled={busy}>Tentar novamente</button></div>}
           {capabilities?.notice && <div className="hosting-notice"><Smartphone size={20} /><div><strong>Complete os avisos no celular</strong><p>{capabilities.notice}</p></div><button className="button secondary" onClick={() => setModal('hosting')}>Ver configuração <ArrowUpRight size={15} /></button></div>}
+          {page === 'admin' && <AdminNotifications api={api} onSessionChange={refreshAuth} onSetupHosting={() => setModal('hosting')} />}
           {page === 'dashboard' && <>
             <section className={`monitor-banner ${!config.enabled ? 'paused' : ''}`}><div className="banner-radar"><Radar size={28} /></div><div className="banner-copy"><div><h2>{statusText}</h2><span className={`live-badge ${healthy && config.enabled ? '' : 'muted'}`}><i />{healthy && config.enabled ? 'AO VIVO' : !config.enabled ? 'PAUSADO' : 'AGUARDANDO'}</span></div><p>{monitorDescription}</p></div><div className="next-check"><span>Próxima verificação</span><strong>{!config.enabled ? 'Pausado' : busy || data?.checking ? 'Consultando…' : seconds !== null ? `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` : 'Conectando…'}</strong></div><button className="banner-control" title={config.enabled ? 'Pausar monitoramento' : 'Retomar monitoramento'} aria-label={config.enabled ? 'Pausar monitoramento' : 'Retomar monitoramento'} onClick={() => settings({ enabled: !config.enabled })} disabled={saving || !data || !canSave}>{config.enabled ? <Pause size={18} /> : <Play size={18} />}</button></section>
             <section className="stats" aria-label="Resumo das vagas"><Stat icon={CalendarDays} label="RAS monitorados" value={data?.initialized ? eligible.length.toString().padStart(2, '0') : '—'} detail="Na sua seleção de escala" /><Stat icon={Users} label="Vagas abertas" value={data?.initialized ? open.reduce((sum, row) => sum + row.remaining, 0).toString().padStart(2, '0') : '—'} detail={`${open.length} RAS com candidaturas abertas`} green /><Stat icon={CalendarDays} label="Datas no radar" value={data?.initialized ? dates.length.toString().padStart(2, '0') : '—'} detail="Dias com RAS na listagem" /><Stat icon={Activity} label="Última alteração" value={data?.lastChange ? formatTime(data.lastChange).slice(0, 5) : '—'} detail={lastChangeLabel} small /></section>

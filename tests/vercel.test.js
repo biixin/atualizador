@@ -158,3 +158,49 @@ test('configurações inválidas, CSRF e destinos push privados são recusados n
   assert.equal((await request('/api/settings', { method: 'PUT', cookie, origin: 'https://untrusted.example', body: { ...settings, interval: 60 } })).status, 403);
   assert.equal((await request('/api/push/subscribe', { method: 'POST', cookie, body: { ...sub(), endpoint: 'https://localhost/private' } })).status, 400);
 });
+
+test('admin na Vercel exige login próprio e envia mensagens sem inscrição no PC', async t => {
+  let clock = NOW;
+  const memory = fakeRedis(() => clock); const sent = [];
+  const env = { ...ENV, ADMIN_USERNAME: 'admin', ADMIN_PASSWORD: 'test-admin-password-only' };
+  const options = { env, command: memory.command, now: () => clock, fetcher: async () => ({ ok: true, json: async () => [] }), push: async (...args) => sent.push(args) };
+  const request = await serve(t, options);
+  assert.equal((await request('/api/admin/session')).data.configured, true);
+  assert.equal((await request('/api/admin/notifications')).status, 401);
+  const panelCookie = await login(request);
+  assert.equal((await request('/api/admin/notifications', { cookie: panelCookie })).status, 401);
+  assert.equal((await request('/api/admin/login', { method: 'POST', body: { username: 'other', password: env.ADMIN_PASSWORD } })).status, 401);
+  const loginResult = await request('/api/admin/login', { method: 'POST', body: { username: 'admin', password: env.ADMIN_PASSWORD } });
+  assert.equal(loginResult.status, 200);
+  const cookie = loginResult.cookie;
+  assert.equal((await request('/api/auth', { cookie })).data.authenticated, true);
+  assert.equal((await request('/api/auth', { cookie })).data.adminAuthenticated, true);
+  await request('/api/push/key', { cookie });
+  await request('/api/push/subscribe', { method: 'POST', cookie: panelCookie, body: { ...sub(), deviceName: 'Meu iPhone', deviceType: 'mobile' } });
+  const devices = await request('/api/admin/notifications', { cookie });
+  assert.equal(devices.data.devices.length, 1); assert.equal(devices.data.devices[0].name, 'Meu iPhone');
+  assert.equal('endpoint' in devices.data.devices[0], false); assert.equal('keys' in devices.data.devices[0], false);
+  const body = { title: 'Mensagem do PC', message: 'Você recebeu o teste?', target: 'all' };
+  assert.equal((await request('/api/admin/notifications/test', { method: 'POST', cookie: panelCookie, body })).status, 401);
+  assert.equal((await request('/api/admin/notifications/test', { method: 'POST', cookie, origin: 'https://untrusted.example', body })).status, 403);
+  const result = await request('/api/admin/notifications/test', { method: 'POST', cookie, body });
+  assert.equal(result.status, 200); assert.equal(result.data.report.sent, 1); assert.equal(sent[0][1].body, body.message);
+  const second = await serve(t, options);
+  assert.equal((await second('/api/admin/notifications', { cookie })).data.history.length, 1);
+  assert.equal((await second('/api/admin/notifications/test', { method: 'POST', cookie, body })).status, 429);
+  const publicStatus = await second('/api/status', { cookie: panelCookie });
+  assert.equal('adminTests' in publicStatus.data, false);
+  const logout = await request('/api/admin/logout', { method: 'POST', cookie, body: {} });
+  assert.equal(logout.status, 200); assert.equal(logout.cookie, 'ras_admin_session=');
+  clock += 8 * 60 * 60 * 1000 + 1;
+  assert.equal((await second('/api/admin/notifications', { cookie })).status, 401);
+});
+
+test('admin sem armazenamento entra, mas não promete enviar notificações', async t => {
+  const env = { ADMIN_USERNAME: 'admin', ADMIN_PASSWORD: 'test-admin-password-only' };
+  const request = await serve(t, { env });
+  const result = await request('/api/admin/login', { method: 'POST', body: { username: 'admin', password: env.ADMIN_PASSWORD } });
+  assert.equal(result.status, 200);
+  assert.equal((await request('/api/admin/notifications', { cookie: result.cookie })).data.available, false);
+  assert.equal((await request('/api/admin/notifications/test', { method: 'POST', cookie: result.cookie, body: { message: 'Teste' } })).status, 503);
+});

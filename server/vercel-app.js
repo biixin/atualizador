@@ -6,12 +6,14 @@ import { Monitor } from './monitor.js';
 import { validateSettings } from './domain.js';
 import { RedisRepository, createRedisCommand, redisEnvironment } from './redis-store.js';
 import { pushSender, validSubscription } from './push.js';
+import { adminAuth, createAdminRouter, deviceMetadata } from './admin.js';
 
 const same = (a, b) => timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
 export function createVercelApp({ env = process.env, command, fetcher, push, now = () => Date.now() } = {}) {
   const app = express();
+  const admin = adminAuth(env, { now, secure: true });
   const redis = redisEnvironment(env);
   const hasRedis = !!(redis.url && redis.token);
   const password = env.MONITOR_TOKEN || '';
@@ -47,6 +49,7 @@ export function createVercelApp({ env = process.env, command, fetcher, push, now
     return { ...monitor.view(), ...(durable ? {} : { events: [], lastChange: null }), capabilities: capabilities(store.state), lastCronAt: store.state.lastCronAt || null };
   }
   function authenticated(req) {
+    if (admin.authenticated(req)) return true;
     if (!protectedPanel) return true;
     const value = req.headers.cookie?.split(';').map(x => x.trim()).find(x => x.startsWith('ras_session='))?.slice(12) || '';
     const [expires, signature] = value.split('.');
@@ -81,7 +84,19 @@ export function createVercelApp({ env = process.env, command, fetcher, push, now
     next();
   });
   app.get('/api/health', (req, res) => res.json({ ok: true, runtime: 'vercel', version: '2', mode: durable ? 'persistent' : 'read-only' }));
-  app.get('/api/auth', (req, res) => res.json({ authenticated: authenticated(req), required: protectedPanel }));
+  app.get('/api/auth', (req, res) => res.json({ authenticated: authenticated(req), required: protectedPanel, adminAuthenticated: admin.authenticated(req), adminConfigured: admin.configured }));
+  app.use('/api/admin', createAdminRouter({
+    auth: admin, now, available: () => durable,
+    readStore: async () => ({ state: await repo().read() }),
+    mutateStore: async callback => {
+      const operation = await repo().locked(callback);
+      if (operation.busy) throw fail(409, 'Uma consulta está em andamento. Aguarde alguns segundos e tente novamente.');
+      return operation.result;
+    },
+    sendForStore: store => push || pushSender(store.state.vapid, env.VAPID_SUBJECT),
+    loginAllowed: durable ? () => repo().loginAllowed('admin') : undefined,
+    resetAttempts: durable ? () => repo().resetLoginAttempts('admin') : undefined,
+  }));
   app.post('/api/login', async (req, res) => {
     let allowed;
     if (durable) allowed = await repo().loginAllowed();
@@ -169,6 +184,7 @@ export function createVercelApp({ env = process.env, command, fetcher, push, now
       if (!store.state.vapid) throw fail(409, 'Carregue as chaves de notificações antes de cadastrar o aparelho.');
       const subscription = { endpoint: req.body.endpoint, keys: { auth: req.body.keys.auth, p256dh: req.body.keys.p256dh } };
       const previous = store.state.subscriptions.find(item => item.endpoint === subscription.endpoint);
+      Object.assign(subscription, deviceMetadata(req.body, previous, now()));
       if (!previous && store.state.subscriptions.length >= 20) throw fail(400, 'Limite de 20 dispositivos atingido.');
       store.state.subscriptions = store.state.subscriptions.filter(item => item.endpoint !== subscription.endpoint);
       store.state.subscriptions.push(subscription); await store.save();
