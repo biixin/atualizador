@@ -17,15 +17,14 @@ try {
   assert.equal(status.capabilities.runtime, 'vercel');
   assert.equal(status.capabilities.push, false);
   await page.getByText('Complete os avisos no celular', { exact: true }).waitFor();
-  assert.equal(await page.locator('#interval').isDisabled(), true);
+  assert.equal(await page.locator('#interval').isEnabled(), true);
   await page.screenshot({ path: '.artifacts/vercel-desktop.png', fullPage: true });
   await page.getByRole('button', { name: 'Ver configuração' }).click();
   await page.getByRole('heading', { name: 'Configurar a Vercel' }).waitFor();
   await page.getByText('Agendamento automático confirmado', { exact: true }).waitFor();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Configurar notificações', exact: true }).click();
-  assert.equal(await page.getByRole('button', { name: 'Ativar notificações neste aparelho' }).isDisabled(), true);
-  await page.getByRole('button', { name: 'Configurar', exact: true }).click();
+  await page.getByRole('button', { name: 'Ativar notificações neste aparelho' }).click();
   await page.getByRole('heading', { name: 'Configurar a Vercel' }).waitFor();
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 390, height: 844 });
