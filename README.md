@@ -2,6 +2,12 @@
 
 Painel em português para acompanhar os RAS do [GCMDC SCORA](https://gcmdc-scora.netlify.app/ras), com monitoramento no servidor e notificações push no celular mesmo com o painel fechado.
 
+## Publicou na Vercel?
+
+Use o [guia de deploy na Vercel](./VERCEL.md). O projeto agora inclui uma API própria para Vercel Functions. Basta republicar **o projeto completo** para consultar as vagas. Para preservar histórico, preferências e receber avisos com o painel fechado, conecte Redis, defina a senha do painel e configure o agendamento descrito no guia.
+
+Há dois modos de servidor: **Node contínuo**, explicado abaixo, e **Vercel Functions**, explicado em `VERCEL.md`. A Vercel não executa o monitor contínuo do computador. No plano gratuito, use um agendador externo para chamadas a cada minuto.
+
 ## Rodar no computador
 
 Requisito: Node.js 22 ou superior (recomendado: 24).
@@ -74,7 +80,7 @@ docker compose up -d --build
 
 O volume `radar_data` preserva os dados e as chaves push. **Não apague esse volume em uma atualização.** Se as chaves push forem perdidas, os celulares precisam se inscrever novamente. Execute somente uma instância do monitor por diretório de dados.
 
-Também é possível usar qualquer serviço de hospedagem Node.js/Docker que ofereça processo contínuo, HTTPS e volume persistente. Configure `HOST=0.0.0.0`, `APP_ORIGIN=https://seu-endereco`, `MONITOR_TOKEN` (24+ caracteres), `DATA_DIR` no volume e `VAPID_SUBJECT` com seu e-mail. O servidor recusa exposição externa sem origem HTTPS e senha. Hospedagem exclusivamente estática e funções que adormecem não mantêm este monitor funcionando.
+Também é possível usar qualquer serviço de hospedagem Node.js/Docker que ofereça processo contínuo, HTTPS e volume persistente. Configure `HOST=0.0.0.0`, `APP_ORIGIN=https://seu-endereco`, `MONITOR_TOKEN` (24+ caracteres), `DATA_DIR` no volume e `VAPID_SUBJECT` com seu e-mail. O servidor recusa exposição externa sem origem HTTPS e senha. Hospedagem exclusivamente estática não executa o monitor. Na Vercel, use o adaptador de funções com Redis e agendamento do [guia específico](./VERCEL.md).
 
 ## Dados e manutenção
 

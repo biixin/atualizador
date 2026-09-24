@@ -3,22 +3,27 @@ import { API_URL, PUBLIC_KEY, decorate, detectChanges, normalizeRows, matchesWor
 import { sourceRequest } from './source.js';
 
 export class Monitor {
-  constructor(store, { fetcher = sourceRequest, push, now = () => Date.now() } = {}) {
+  constructor(store, { fetcher = sourceRequest, push, now = () => Date.now(), continuous = true, requestTimeout = 65_000, deliveryBudget = Infinity } = {}) {
     this.store = store; this.fetcher = fetcher; this.push = push; this.now = now;
-    this.timer = null; this.inflight = null; this.delivery = null; this.nextCheck = null; this.failures = 0; this.stopped = false;
+    this.continuous = continuous; this.requestTimeout = requestTimeout; this.deliveryBudget = deliveryBudget;
+    this.timer = null; this.inflight = null; this.delivery = null; this.nextCheck = store.state.nextCheck || null; this.failures = store.state.failures || 0; this.stopped = false;
   }
   schedule() {
     clearTimeout(this.timer); this.nextCheck = null;
-    if (this.stopped || !this.store.state.settings.enabled) return;
+    if (this.stopped || !this.store.state.settings.enabled) { this.store.state.nextCheck = null; return; }
     const delay = Math.min(900, this.store.state.settings.interval * 2 ** Math.min(this.failures, 4)) * 1000;
-    this.nextCheck = this.now() + delay;
+    this.nextCheck = this.continuous ? this.now() + delay : (Math.floor((this.checkStarted || this.now()) / delay) + 1) * delay;
+    this.store.state.nextCheck = this.nextCheck;
+    this.store.state.failures = this.failures;
+    if (!this.continuous) return;
     this.timer = setTimeout(() => this.check().catch(console.error), delay);
     this.timer.unref?.();
   }
   check() {
     if (this.inflight) return this.inflight;
     clearTimeout(this.timer); this.nextCheck = null;
-    this.inflight = this.run().finally(() => { this.inflight = null; this.schedule(); });
+    this.checkStarted = this.now();
+    this.inflight = this.run().finally(async () => { this.inflight = null; this.schedule(); await this.store.save(); });
     return this.inflight;
   }
   async run() {
@@ -26,7 +31,7 @@ export class Monitor {
     try {
       const response = await this.fetcher(API_URL, {
         method: 'POST', headers: { apikey: PUBLIC_KEY, 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-        body: '{}', signal: AbortSignal.timeout(65_000),
+        body: '{}', signal: AbortSignal.timeout(this.requestTimeout),
       });
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'O SCORA passou a exigir autorização. A consulta precisa ser reconfigurada.' : `O SCORA respondeu com erro ${response.status}. Uma nova tentativa será feita automaticamente.`);
       const rows = normalizeRows(await response.json());
@@ -44,15 +49,15 @@ export class Monitor {
         const event = { id: randomUUID(), kind: change.kind, at: state.lastCheck, title, detail, row: change.row };
         state.events.unshift(event);
         if (matchesWorkdays(change.row, state.settings.workdays) && (change.kind === 'opened' || state.settings.notifyChanges)) {
-          for (const subscription of state.subscriptions) state.outbox.push({ id: randomUUID(), eventId: event.id, endpoint: subscription.endpoint, payload: { title, body: detail, tag: event.id }, attempts: 0, nextAttempt: now, expires: now + 3_600_000 });
+          for (const subscription of state.subscriptions) state.outbox.push({ id: randomUUID(), eventId: event.id, rowId: event.row.id, kind: event.kind, endpoint: subscription.endpoint, payload: { title, body: detail, tag: event.id }, attempts: 0, nextAttempt: now, expires: now + 3_600_000 });
         }
       }
       state.events = state.events.slice(0, 200);
-      this.store.save();
+      await this.store.save();
     } catch (error) {
       this.failures += 1;
       state.error = ['TimeoutError', 'AbortError'].includes(error.name) ? 'O SCORA demorou para responder. Tentaremos novamente automaticamente.' : error.message === 'fetch failed' || ['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED'].includes(error.code) ? 'Não foi possível alcançar o SCORA. Verifique a conexão do servidor.' : error.message;
-      this.store.save();
+      await this.store.save();
     }
     await this.deliver();
   }
@@ -64,12 +69,14 @@ export class Monitor {
   async flush() {
     if (!this.push) return;
     const state = this.store.state;
+    const deadline = Date.now() + this.deliveryBudget;
     for (const job of [...state.outbox]) {
+      if (Date.now() >= deadline) break;
       if (job.nextAttempt > this.now()) continue;
       const subscription = state.subscriptions.find(item => item.endpoint === job.endpoint);
       const event = state.events.find(item => item.id === job.eventId);
-      const current = event?.row && state.snapshot?.find(row => row.id === event.row.id);
-      const obsolete = event?.kind === 'opened' && (!current || statusOf(current, this.now()) !== 'open' || !matchesWorkdays(current, state.settings.workdays));
+      const current = state.snapshot?.find(row => row.id === (job.rowId || event?.row?.id));
+      const obsolete = (job.kind || event?.kind) === 'opened' && (!current || statusOf(current, this.now()) !== 'open' || !matchesWorkdays(current, state.settings.workdays));
       if (!subscription || job.expires <= this.now() || obsolete) { state.outbox = state.outbox.filter(item => item.id !== job.id); continue; }
       try {
         await this.push(subscription, job.payload);
@@ -85,9 +92,9 @@ export class Monitor {
           state.pushError = 'Um aviso não pôde ser enviado. O servidor tentará novamente por até uma hora.';
         }
       }
-      this.store.save();
+      await this.store.save();
     }
-    this.store.save();
+    await this.store.save();
   }
   view() {
     const state = this.store.state;

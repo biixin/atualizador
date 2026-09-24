@@ -40,8 +40,8 @@
       "end": "06:00:00",
       "notes": "VALOR R$270",
       "total": 24,
-      "occupied": 24,
-      "remaining": 0,
+      "occupied": 23,
+      "remaining": 1,
       "deadline": "2026-09-23T15:00:00+00:00",
       "status": "closed"
     },
@@ -92,8 +92,8 @@
       "end": "06:00:00",
       "notes": "VALOR R$270",
       "total": 24,
-      "occupied": 16,
-      "remaining": 8,
+      "occupied": 15,
+      "remaining": 9,
       "deadline": "2026-09-23T15:00:00+00:00",
       "status": "closed"
     },
@@ -105,8 +105,8 @@
       "end": "05:00:00",
       "notes": "VALOR R$270",
       "total": 10,
-      "occupied": 10,
-      "remaining": 0,
+      "occupied": 8,
+      "remaining": 2,
       "deadline": "2026-09-23T15:00:00+00:00",
       "status": "closed"
     },
@@ -165,6 +165,86 @@
   ],
   "events": [
     {
+      "id": "373c511b-f3b3-44e7-ad13-c008c95ca2ff",
+      "kind": "updated",
+      "at": "2026-09-24T01:19:20.260Z",
+      "title": "RAS atualizado",
+      "detail": "VTR FEST · 25/09/2026 · 1 vaga(s) restante(s)",
+      "row": {
+        "id": "49",
+        "date": "2026-09-25",
+        "location": "VTR FEST",
+        "start": "18:00:00",
+        "end": "06:00:00",
+        "notes": "VALOR R$270",
+        "total": 24,
+        "occupied": 23,
+        "remaining": 1,
+        "deadline": "2026-09-23T15:00:00+00:00",
+        "status": "closed"
+      }
+    },
+    {
+      "id": "4f69db65-ed8d-4c8f-8e21-930414403dfe",
+      "kind": "updated",
+      "at": "2026-09-23T23:47:47.338Z",
+      "title": "RAS atualizado",
+      "detail": "VTR FEST · 26/09/2026 · 9 vaga(s) restante(s)",
+      "row": {
+        "id": "53",
+        "date": "2026-09-26",
+        "location": "VTR FEST",
+        "start": "18:00:00",
+        "end": "06:00:00",
+        "notes": "VALOR R$270",
+        "total": 24,
+        "occupied": 15,
+        "remaining": 9,
+        "deadline": "2026-09-23T15:00:00+00:00",
+        "status": "closed"
+      }
+    },
+    {
+      "id": "c3ffa0a0-d83b-473a-8595-4350a8946024",
+      "kind": "updated",
+      "at": "2026-09-23T23:37:43.923Z",
+      "title": "RAS atualizado",
+      "detail": "POG FEST TRUNO 2 · 26/09/2026 · 2 vaga(s) restante(s)",
+      "row": {
+        "id": "52",
+        "date": "2026-09-26",
+        "location": "POG FEST TRUNO 2",
+        "start": "21:00:00",
+        "end": "05:00:00",
+        "notes": "VALOR R$270",
+        "total": 10,
+        "occupied": 8,
+        "remaining": 2,
+        "deadline": "2026-09-23T15:00:00+00:00",
+        "status": "closed"
+      }
+    },
+    {
+      "id": "26571c07-2329-403b-8f09-ef6a29b7341b",
+      "kind": "updated",
+      "at": "2026-09-23T23:35:43.227Z",
+      "title": "RAS atualizado",
+      "detail": "POG FEST TRUNO 2 · 26/09/2026 · 1 vaga(s) restante(s)",
+      "row": {
+        "id": "52",
+        "date": "2026-09-26",
+        "location": "POG FEST TRUNO 2",
+        "start": "21:00:00",
+        "end": "05:00:00",
+        "notes": "VALOR R$270",
+        "total": 10,
+        "occupied": 9,
+        "remaining": 1,
+        "deadline": "2026-09-23T15:00:00+00:00",
+        "status": "closed"
+      }
+    },
+    {
       "id": "4fd8a064-5ca4-4365-bdfd-f99426fd22e6",
       "kind": "updated",
       "at": "2026-09-23T21:32:21.363Z",
@@ -194,8 +274,10 @@
   ],
   "subscriptions": [],
   "outbox": [],
-  "lastCheck": "2026-09-23T21:58:29.667Z",
-  "lastChange": "2026-09-23T21:32:21.363Z",
-  "checks": 68,
-  "error": null
+  "lastCheck": "2026-09-24T01:43:03.958Z",
+  "lastChange": "2026-09-24T01:19:20.260Z",
+  "checks": 293,
+  "error": null,
+  "nextCheck": 1790214243963,
+  "failures": 0
 }
